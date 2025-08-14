@@ -1,0 +1,73 @@
+// ------------------------------
+// Bayesian linear regression
+// ACE ~ SSD_1 + SSD_2 + age + education + sex
+// Hierarchical SSD effects (either sign) + half-normal scales
+// ------------------------------
+
+data {
+  int<lower=0> N;          // Number of subjects
+  vector[N] ssd_1;         // Integration score (SSD) for Yeo network 1
+  vector[N] ssd_2;         // Integration score (SSD) for Yeo network 2
+  vector[N] age;           // Age at onset
+  vector[N] edu;           // Years of education
+  vector[N] sex;           // Binary-coded sex: Female = 0, Male = 1
+  vector[N] ace;           // ACE score (outcome)
+}
+
+parameters {
+  real alpha;                        // Intercept
+
+  // Hierarchical SSD effects (no sign constraint)
+  real shared_beta_ssd;              // Shared mean effect across SSD slopes
+  real<lower=0> sd_ssd;              // Between-network SD for SSD effects (half-normal)
+  real beta_ssd_1;                   // SSD effect for network 1
+  real beta_ssd_2;                   // SSD effect for network 2
+
+  // Covariate effects
+  real beta_age;
+  real beta_edu;
+  real beta_sex;
+
+  // Residual SD (half-normal)
+  real<lower=0> sigma;
+}
+
+model {
+  // Priors
+  shared_beta_ssd ~ normal(0, 1);    // weakly-informative center
+  sd_ssd          ~ normal(0, 1);    // half-normal scale for heterogeneity
+
+  beta_ssd_1 ~ normal(shared_beta_ssd, sd_ssd);
+  beta_ssd_2 ~ normal(shared_beta_ssd, sd_ssd);
+
+  beta_age ~ normal(0, 1);
+  beta_edu ~ normal(0, 1);
+  beta_sex ~ normal(0, 1);
+
+  alpha ~ normal(0, 10);             // weak prior on intercept
+  sigma ~ normal(0, 5);              // half-normal on residual SD
+
+  // Single likelihood including both SSD terms
+  ace ~ normal(
+    alpha
+    + beta_ssd_1 * ssd_1
+    + beta_ssd_2 * ssd_2
+    + beta_age   * age
+    + beta_edu   * edu
+    + beta_sex   * sex,
+    sigma
+  );
+}
+
+generated quantities {
+  // Linear predictor for each subject
+  vector[N] y_hat;
+  for (n in 1:N) {
+    y_hat[n] = alpha
+               + beta_ssd_1 * ssd_1[n]
+               + beta_ssd_2 * ssd_2[n]
+               + beta_age   * age[n]
+               + beta_edu   * edu[n]
+               + beta_sex   * sex[n];
+  }
+}
