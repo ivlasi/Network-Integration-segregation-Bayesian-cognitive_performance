@@ -34,7 +34,7 @@ parameters {
 
 model {
   // Priors
-  shared_beta_ssd ~ normal(0, 1);    // weakly-informative center
+  shared_beta_ssd ~ normal(0, 100);    // weakly-informative center
   sd_ssd          ~ normal(0, 1);    // half-normal scale for heterogeneity
 
   beta_ssd_1 ~ normal(shared_beta_ssd, sd_ssd);
